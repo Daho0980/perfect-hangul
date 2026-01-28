@@ -1,0 +1,9 @@
+-I/usr/include/ibus-1.0
+-DWITH_GZFILEOP
+-I/usr/include/libmount
+-I/usr/include/blkid
+-I/usr/include/glib-2.0
+-I/usr/lib64/glib-2.0/include
+-I/usr/include/sysprof-6
+-pthread
+-I/usr/include/hangul-1.0
