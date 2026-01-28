@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding"utf-8"?>
+<component>
+    <name>com.example.PerfectHangul</name>
+    <description>Perfect-Hangul Input Method</description>
+    <version>1.0.0</version>
+    <license>NOPE</license>
+    <author>Daho &lt;0980daho@gmail.com&gt;</author>
+    <homepage>http://github.com/Daho0980/perfect-hangul</homepage>
+
+    <exec>/usr/bin/perfect-korean --ibus</exec>
+
+    <engines>
+        <engine>
+            <name>perfect-korean</name>
+
+            <logname>Perfect Hangul</logname>
+
+            <description>Perfect-Hangul Engine</description>
+            <language>ko</language>
+            <license>NOPE</license>
+            <author>Daho</author>
+
+            <icon>/usr/share/icons/hicolor/48x48/apps/input-keyboard.png</icon>
+
+            <layout>default</layout>
+        <engine>
+    </engines>
+</component>
