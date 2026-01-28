@@ -21,8 +21,6 @@ static void perfect_hangul_engine_init(PerfectHangulEngine* engine);
 static void perfect_hangul_engine_class_init(PerfectHangulEngineClass* klass);
 GType perfect_hangul_engine_get_type(void);
 
-static IBusEngineClass* parent_class = NULL;
-
 #define TYPE_PERFECT_HANGUL (perfect_hangul_engine_get_type())
 G_DEFINE_TYPE (PerfectHangulEngine, perfect_hangul_engine, IBUS_TYPE_ENGINE);
 
