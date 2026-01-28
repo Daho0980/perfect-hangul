@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding"utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <component>
     <name>com.example.PerfectHangul</name>
     <description>Perfect-Hangul Input Method</description>
@@ -7,13 +7,13 @@
     <author>Daho &lt;0980daho@gmail.com&gt;</author>
     <homepage>http://github.com/Daho0980/perfect-hangul</homepage>
 
-    <exec>/usr/bin/perfect-korean --ibus</exec>
+    <exec>/usr/bin/perfect-hangul --ibus</exec>
 
     <engines>
         <engine>
-            <name>perfect-korean</name>
+            <name>perfect-hangul</name>
 
-            <logname>Perfect Hangul</logname>
+            <longname>Perfect Hangul</longname>
 
             <description>Perfect-Hangul Engine</description>
             <language>ko</language>
@@ -22,7 +22,7 @@
 
             <icon>/usr/share/icons/hicolor/48x48/apps/input-keyboard.png</icon>
 
-            <layout>default</layout>
-        <engine>
+            <layout>kr</layout>
+        </engine>
     </engines>
 </component>

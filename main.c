@@ -2,7 +2,6 @@
 #include <hangul-1.0/hangul.h>
 
 #include <stdio.h>
-// #include <string.h>
 
 
 typedef struct _PerfectHangulEngine       PerfectHangulEngine    ;
@@ -20,6 +19,8 @@ struct _PerfectHangulEngineClass {
 static void perfect_hangul_engine_init(PerfectHangulEngine* engine);
 static void perfect_hangul_engine_class_init(PerfectHangulEngineClass* klass);
 GType perfect_hangul_engine_get_type(void);
+
+static IBusEngineClass* parent_class = NULL;
 
 #define TYPE_PERFECT_HANGUL (perfect_hangul_engine_get_type())
 G_DEFINE_TYPE (PerfectHangulEngine, perfect_hangul_engine, IBUS_TYPE_ENGINE);
@@ -90,6 +91,8 @@ static gboolean perfect_hangul_engine_process_key_event(
         return FALSE;
     }
 
+    if ( modifiers & (IBUS_CONTROL_MASK|IBUS_MOD1_MASK) ) return FALSE;
+
     bool consumed = hangul_ic_process(perfectHangulEngine->hic, keyval);
 
     if ( consumed ) {
@@ -112,19 +115,32 @@ static void perfect_hangul_engine_init(PerfectHangulEngine* engine) {
     engine->hic = hangul_ic_new("2");
 }
 
+static void perfect_hangul_engine_focus_in(IBusEngine* engine) {
+    PerfectHangulEngine* perfectHangulEngine = (PerfectHangulEngine*)engine;
+
+    hangul_ic_reset(perfectHangulEngine->hic);
+
+    if ( parent_class && parent_class->focus_in ) {
+        parent_class->focus_in(engine);
+    }
+}
+
 static void perfect_hangul_engine_finalize(GObject* object) {
     PerfectHangulEngine* engine = (PerfectHangulEngine*)object;
     if ( engine->hic ) {
         hangul_ic_delete(engine->hic);
     }
-    G_OBJECT_CLASS (perfect_hangul_engine_parent_class)->finalize (object);
+    G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
 static void perfect_hangul_engine_class_init(PerfectHangulEngineClass* klass) {
     IBusEngineClass* engineClass = IBUS_ENGINE_CLASS(klass);
     GObjectClass*    objectClass = G_OBJECT_CLASS(klass);
 
+    parent_class = g_type_class_peek_parent(klass);
+
     engineClass->process_key_event = perfect_hangul_engine_process_key_event;
+    engineClass->focus_in          = perfect_hangul_engine_focus_in         ;
     objectClass->finalize          = perfect_hangul_engine_finalize         ;
 }
 
@@ -137,8 +153,10 @@ int main(int argc, char** argv){
         return 1;
     }
 
+    ibus_bus_request_name(bus, "com.example.PerfectHangul", 0);
+
     IBusFactory* factory = ibus_factory_new(ibus_bus_get_connection(bus));
-    ibus_factory_add_engine(factory, "perfect-korean", TYPE_PERFECT_HANGUL);
+    ibus_factory_add_engine(factory, "perfect-hangul", TYPE_PERFECT_HANGUL);
 
     printf("\x1b[93mPerfect Hangul Engine\x1b[0m Started...\n");
 
