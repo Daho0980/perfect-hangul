@@ -1,2 +1,4 @@
 .gitignore
 perfect-hangul
+test/
+script/

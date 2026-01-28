@@ -29,40 +29,25 @@ static void update_preedit(PerfectHangulEngine *engine) {
     const ucschar* ucsstr = hangul_ic_get_preedit_string(engine->hic);
 
     if ( ucsstr && *ucsstr ) {
-        gchar* utf8str = g_ucs4_to_utf8(
-            (const gunichar*)ucsstr, -1,
-            NULL, NULL,
-            NULL
-        );
+        gchar* utf8str = g_ucs4_to_utf8((const gunichar*)ucsstr, -1, NULL, NULL, NULL);
         if ( utf8str ) {
             IBusText* text = ibus_text_new_from_string(utf8str);
-            guint     len  = g_utf8_strlen(utf8str, -1);
+            guint     len  = g_utf8_strlen(utf8str, -1)        ;
 
-            ibus_text_append_attribute(
-                text,
-                IBUS_ATTR_TYPE_UNDERLINE,
-                IBUS_ATTR_UNDERLINE_SINGLE,
-                0,
-                -1
-            );
-
-            ibus_engine_update_preedit_text(
-                (IBusEngine*)engine,
-                text, len,
-                TRUE
-            );
+            ibus_text_append_attribute(text, IBUS_ATTR_TYPE_UNDERLINE, IBUS_ATTR_UNDERLINE_SINGLE, 0, -1);
+            
+            ibus_engine_update_preedit_text((IBusEngine*)engine, text, len, TRUE);
 
             g_object_unref(text);
             g_free(utf8str);
         }
-    }
-    else {
+    } else {
         ibus_engine_hide_preedit_text((IBusEngine*)engine);
     }
 }
 
 static void commit_string(PerfectHangulEngine* engine) {
-    const ucschar* ucsstr = hangul_ic_get_commit_string(engine->hic);
+    const ucschar* ucsstr = hangul_ic_get_commit_string(engine->hic);    
     if ( ucsstr && *ucsstr ) {
         gchar* utf8str = g_ucs4_to_utf8(
             (const gunichar*)ucsstr, -1,
@@ -79,6 +64,16 @@ static void commit_string(PerfectHangulEngine* engine) {
     }
 }
 
+static void force_finish_input(PerfectHangulEngine* engine) {
+    if (hangul_ic_is_empty(engine->hic)) {
+        return;
+    }
+
+    hangul_ic_flush(engine->hic);
+    commit_string(engine);
+    update_preedit(engine);
+}
+
 static gboolean perfect_hangul_engine_process_key_event(
     IBusEngine* engine   ,
     guint       keyval   ,
@@ -87,46 +82,104 @@ static gboolean perfect_hangul_engine_process_key_event(
 ) {
     PerfectHangulEngine* perfectHangulEngine = (PerfectHangulEngine*)engine;
 
-    if ( modifiers & IBUS_RELEASE_MASK ) {
+    if ( modifiers & IBUS_RELEASE_MASK ) return FALSE;
+
+    if (
+        keyval==IBUS_KEY_Shift_L   ||
+        keyval==IBUS_KEY_Shift_R   ||
+        keyval==IBUS_KEY_Control_L ||
+        keyval==IBUS_KEY_Control_R ||
+        keyval==IBUS_KEY_Alt_L     ||
+        keyval==IBUS_KEY_Alt_R     ||
+        keyval==IBUS_KEY_Caps_Lock ||
+        keyval==IBUS_KEY_Super_L   ||
+        keyval==IBUS_KEY_Super_R
+    ) {
+        return FALSE;
+    }
+    if (
+        modifiers & (
+            IBUS_CONTROL_MASK |
+            IBUS_MOD1_MASK    |
+            IBUS_SUPER_MASK
+        )
+    ) {
+        if ( !hangul_ic_is_empty(perfectHangulEngine->hic) ) {
+            force_finish_input(perfectHangulEngine);
+        }
+
         return FALSE;
     }
 
-    if ( modifiers & (IBUS_CONTROL_MASK|IBUS_MOD1_MASK) ) return FALSE;
+    if ( keyval == IBUS_KEY_Escape ) {
+        if ( !hangul_ic_is_empty(perfectHangulEngine->hic) ) {
+            hangul_ic_reset(perfectHangulEngine->hic);
+            ibus_engine_hide_preedit_text(engine);
 
-    bool consumed = hangul_ic_process(perfectHangulEngine->hic, keyval);
+            return TRUE;
+        }
 
+        return FALSE;
+    }
+
+    gboolean consumed = hangul_ic_process(perfectHangulEngine->hic, keyval);
     if ( consumed ) {
         commit_string(perfectHangulEngine);
         update_preedit(perfectHangulEngine);
-
+        
         return TRUE;
     }
 
     if ( !hangul_ic_is_empty(perfectHangulEngine->hic) ) {
-        hangul_ic_flush(perfectHangulEngine->hic);
+        force_finish_input(perfectHangulEngine);
+    } else {
         commit_string(perfectHangulEngine);
         update_preedit(perfectHangulEngine);
     }
-
+    
     return FALSE;
-}
-
-static void perfect_hangul_engine_init(PerfectHangulEngine* engine) {
-    engine->hic = hangul_ic_new("2");
 }
 
 static void perfect_hangul_engine_focus_in(IBusEngine* engine) {
     PerfectHangulEngine* perfectHangulEngine = (PerfectHangulEngine*)engine;
-
-    hangul_ic_reset(perfectHangulEngine->hic);
+    
+    if ( !hangul_ic_is_empty(perfectHangulEngine->hic) ) {
+        hangul_ic_reset(perfectHangulEngine->hic);
+    }
+    ibus_engine_hide_preedit_text(engine);
 
     if ( parent_class && parent_class->focus_in ) {
         parent_class->focus_in(engine);
     }
 }
 
+static void perfect_hangul_engine_focus_out(IBusEngine* engine) {
+    PerfectHangulEngine* perfectHangulEngine = (PerfectHangulEngine*)engine;
+
+    force_finish_input(perfectHangulEngine);
+
+    if ( parent_class && parent_class->focus_out ) {
+        parent_class->focus_out(engine);
+    }
+}
+
+static void perfect_hangul_engine_disable(IBusEngine* engine) {
+    PerfectHangulEngine* perfectHangulEngine = (PerfectHangulEngine*)engine;
+
+    force_finish_input(perfectHangulEngine);
+
+    if ( parent_class && parent_class->disable ) {
+        parent_class->disable(engine);
+    }
+}
+
+static void perfect_hangul_engine_init(PerfectHangulEngine* engine) {
+    engine->hic = hangul_ic_new("2"); // (두벌식이라는 뜻)
+}
+
 static void perfect_hangul_engine_finalize(GObject* object) {
     PerfectHangulEngine* engine = (PerfectHangulEngine*)object;
+
     if ( engine->hic ) {
         hangul_ic_delete(engine->hic);
     }
@@ -135,16 +188,19 @@ static void perfect_hangul_engine_finalize(GObject* object) {
 
 static void perfect_hangul_engine_class_init(PerfectHangulEngineClass* klass) {
     IBusEngineClass* engineClass = IBUS_ENGINE_CLASS(klass);
-    GObjectClass*    objectClass = G_OBJECT_CLASS(klass);
+    GObjectClass*    objectClass = G_OBJECT_CLASS(klass)   ;
 
     parent_class = g_type_class_peek_parent(klass);
 
-    engineClass->process_key_event = perfect_hangul_engine_process_key_event;
-    engineClass->focus_in          = perfect_hangul_engine_focus_in         ;
-    objectClass->finalize          = perfect_hangul_engine_finalize         ;
+    engineClass->process_key_event = perfect_hangul_engine_process_key_event
+   ;engineClass->focus_in          = perfect_hangul_engine_focus_in
+   ;engineClass->focus_out         = perfect_hangul_engine_focus_out
+   ;engineClass->disable           = perfect_hangul_engine_disable
+   ;objectClass->finalize          = perfect_hangul_engine_finalize
+   ;
 }
 
-int main(int argc, char** argv){
+int main(int argc, char** argv) {
     ibus_init();
     IBusBus* bus = ibus_bus_new();
     if ( !ibus_bus_is_connected(bus) ) {
@@ -157,8 +213,7 @@ int main(int argc, char** argv){
 
     IBusFactory* factory = ibus_factory_new(ibus_bus_get_connection(bus));
     ibus_factory_add_engine(factory, "perfect-hangul", TYPE_PERFECT_HANGUL);
-
-    printf("\x1b[93mPerfect Hangul Engine\x1b[0m Started...\n");
+    printf("\x1b[93mPerfect Hangul Engine\x1b[0m Started.\n");
 
     ibus_main();
 
